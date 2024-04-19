@@ -18,6 +18,7 @@ import json
 import os
 import pep8
 import unittest
+from unittest.mock import patch
 DBStorage = db_storage.DBStorage
 classes = {"Amenity": Amenity, "City": City, "Place": Place,
            "Review": Review, "State": State, "User": User}
@@ -68,21 +69,57 @@ test_db_storage.py'])
                             "{:s} method needs a docstring".format(func[0]))
 
 
-class TestFileStorage(unittest.TestCase):
-    """Test the FileStorage class"""
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
+@unittest.skipIf(models.storage_t != 'db', "Not testing db Storage")
+class TestDBStorage(unittest.TestCase):
+    """Test the File Storage class"""
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup for the tests"""
+        cls.storage = DBStorage()
+
+    def setUp(self):
+        """sets up the tests"""
+        self.session_patcher = patch.object(self.storage,
+                                            '_DBStorage__session')
+        self.mock_session = self.session_patcher.start()
+
+    def tearDown(self):
+        """Tears Down the Tests"""
+        self.session_patcher.stop()
+
     def test_all_returns_dict(self):
-        """Test that all returns a dictionaty"""
-        self.assertIs(type(models.storage.all()), dict)
+        """Tests the db method all returns a dict"""
+        self.assertIs(type(self.storage.all()), dict)
 
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_all_no_class(self):
-        """Test that all returns all rows when no class is passed"""
+    def test_all(self):
+        """Tests the all method is called"""
+        self.storage.all()
+        self.mock_session.query.assert_called()
 
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
     def test_new(self):
-        """test that new adds an object to the database"""
+        """Test the new method"""
+        state = State()
+        self.storage.new(state)
+        self.mock_session.add.assert_called_with(state)
 
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
     def test_save(self):
-        """Test that save properly saves objects to file.json"""
+        """Tests the save method"""
+        self.storage.save()
+        self.mock_session.commit.assert_called()
+
+    def test_get_class(self):
+        """tests that the get method returns a valid object or none"""
+        self.storage.get(State, "1234")
+        self.mock_session.query.assert_called()
+
+    def test_count(self):
+        """Test the count method returns the actual number of objects"""
+        self.storage.count(State)
+        self.mock_session.query.assert_called()
+
+    def test_delete(self):
+        """Test that an object is succefully deleted"""
+        state = State()
+        self.storage.delete(state)
+        self.mock_session.delete.assert_called_with(state)

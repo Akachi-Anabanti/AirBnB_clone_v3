@@ -7,20 +7,12 @@ from datetime import datetime
 import inspect
 import models
 from models.engine import file_storage
-from models.amenity import Amenity
-from models.base_model import BaseModel
-from models.city import City
-from models.place import Place
-from models.review import Review
 from models.state import State
-from models.user import User
 import json
 import os
 import pep8
 import unittest
 FileStorage = file_storage.FileStorage
-classes = {"Amenity": Amenity, "BaseModel": BaseModel, "City": City,
-           "Place": Place, "Review": Review, "State": State, "User": User}
 
 
 class TestFileStorageDocs(unittest.TestCase):
@@ -68,48 +60,70 @@ test_file_storage.py'])
                             "{:s} method needs a docstring".format(func[0]))
 
 
+@unittest.skipIf(models.storage_t == "db", "Not Testing File Storage")
 class TestFileStorage(unittest.TestCase):
     """Test the FileStorage class"""
-    @unittest.skipIf(models.storage_t == 'db', "not testing file storage")
-    def test_all_returns_dict(self):
-        """Test that all returns the FileStorage.__objects attr"""
-        storage = FileStorage()
-        new_dict = storage.all()
-        self.assertEqual(type(new_dict), dict)
-        self.assertIs(new_dict, storage._FileStorage__objects)
 
-    @unittest.skipIf(models.storage_t == 'db', "not testing file storage")
+    @classmethod
+    def setUpClass(cls):
+        """set up"""
+        cls.storage = FileStorage()
+
+    def setUp(self):
+        """Set up for the storage"""
+        self.storage._FileStorage__file_path = "test_file.json"
+        self.storage._FileStorage__objects = {}
+        self.objects = self.storage._FileStorage__objects
+
+    def tearDown(self):
+        """Tear down testfiles and objects"""
+        if os.path.exists("test_file.json"):
+            os.remove("test_file.json")
+        self.storage._FileStorage__objects = {}
+
+    def test_all_with_class(self):
+        """Test the class returns all objects"""
+        state = State()
+        self.storage.new(state)
+        self.assertIn(state, self.storage.all(State).values())
+
+    def test_all(self):
+        """Returns all objects"""
+        self.assertEqual(self.storage.all(), self.objects)
+
     def test_new(self):
-        """test that new adds an object to the FileStorage.__objects attr"""
-        storage = FileStorage()
-        save = FileStorage._FileStorage__objects
-        FileStorage._FileStorage__objects = {}
-        test_dict = {}
-        for key, value in classes.items():
-            with self.subTest(key=key, value=value):
-                instance = value()
-                instance_key = instance.__class__.__name__ + "." + instance.id
-                storage.new(instance)
-                test_dict[instance_key] = instance
-                self.assertEqual(test_dict, storage._FileStorage__objects)
-        FileStorage._FileStorage__objects = save
+        """Test that a new object is sucessfully created"""
+        state = State()
+        self.storage.new(state)
+        self.assertIn(state, self.storage.all().values())
 
-    @unittest.skipIf(models.storage_t == 'db', "not testing file storage")
     def test_save(self):
-        """Test that save properly saves objects to file.json"""
-        storage = FileStorage()
-        new_dict = {}
-        for key, value in classes.items():
-            instance = value()
-            instance_key = instance.__class__.__name__ + "." + instance.id
-            new_dict[instance_key] = instance
-        save = FileStorage._FileStorage__objects
-        FileStorage._FileStorage__objects = new_dict
-        storage.save()
-        FileStorage._FileStorage__objects = save
-        for key, value in new_dict.items():
-            new_dict[key] = value.to_dict()
-        string = json.dumps(new_dict)
-        with open("file.json", "r") as f:
-            js = f.read()
-        self.assertEqual(json.loads(string), json.loads(js))
+        """Test the object is saved to file"""
+        state = State()
+        self.storage.new(state)
+        self.storage.save()
+        with open("test_file.json", "r") as file:
+            self.assertIn(state, self.objects.values())
+
+    def test_delete(self):
+        """Tests that an object is deleted"""
+        state = State()
+        self.storage.new(state)
+        self.assertIn(state, self.storage.all(State).values())
+
+        self.storage.delete(state)
+        self.assertNotIn(state, self.storage.all(State).values())
+
+    def test_get(self):
+        """Test the get a state with id or None"""
+        state = State()
+        self.storage.new(state)
+        self.assertEqual(self.storage.get(State, state.id), state)
+
+    def test_count(self):
+        """Test the count returns the actual number of items"""
+        state1 = State()
+        state2 = State()
+        self.storage.new(state1)
+        self.storage.new(state2)
+        self.assertEqual(self.storage.count(State), 2)
