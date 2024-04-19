@@ -25,7 +25,7 @@ def obj_stats():
             "cities": storage.count(City),
             "reviews": storage.count(Review),
             "states": storage.count(State),
-            "user": storage.count(User),
-            "place": storage.count(Place)
+            "users": storage.count(User),
+            "places": storage.count(Place)
             }
     return jsonify(obj)
