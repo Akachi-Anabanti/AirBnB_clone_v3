@@ -13,7 +13,7 @@ from flask import jsonify, abort, request
 def get_all_cities(state_id):
     """retrives all cities"""
 
-    state = storage.get(State,state_id)
+    state = storage.get(State, state_id)
     if not state:
         abort(404)
 
@@ -45,7 +45,8 @@ def delete_city(city_id):
     return {}, 200
 
 
-@app_views.route("/states/<string:state_id>/cities", methods=["POST"], strict_slashes=False)
+@app_views.route("/states/<string:state_id>/cities",
+                 methods=["POST"], strict_slashes=False)
 def create_city(state_id):
     """creates a city"""
     state = storage.get(State, state_id)
