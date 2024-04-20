@@ -75,5 +75,5 @@ def update_state(state_id):
     for key, value in payload.items():
         if key not in ignored_keys:
             setattr(state, key, value)
-    storage.save()
+    state.save()
     return jsonify(state.to_dict()), 200
